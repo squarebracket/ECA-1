@@ -38,21 +38,24 @@ class ReceiptForm(forms.ModelForm):
         fields = ['buyer', ]
 
     def clean_buyer(self):
-        return Student.objects.get(pk=self.cleaned_data['buyer'])
+        return Student.objects.get(id=self.cleaned_data['buyer'])
 
 
 class ReceiptAdmin(admin.ModelAdmin):
     inlines = [ReceiptLineItemInline]
     excludes = ['seller']
     form = ReceiptForm
-    readonly_fields = ('first_name', 'last_name', 'email', 'address', 'receipt_total')
+    readonly_fields = ('student_id', 'first_name', 'last_name', 'email', 'address', 'receipt_total')
 
-    fields = ('buyer', ('first_name', 'last_name', 'email', 'address'), ('paymeth', 'receipt_total'))
+    fields = (('buyer', 'student_id'), ('first_name', 'last_name', 'email', 'address'), ('paymeth', 'receipt_total'))
 
     def wrap_in_span(self, attr, instance):
         if instance.pk is None:
             return '<span id="%s"></span>' % (attr,)
         return '<span id="%s">%s</span>' % (attr, instance.buyer.__getattribute__(attr) or "")
+
+    def student_id(self, instance):
+        return self.wrap_in_span('student_id', instance)
 
     def first_name(self, instance):
         return self.wrap_in_span('first_name', instance)

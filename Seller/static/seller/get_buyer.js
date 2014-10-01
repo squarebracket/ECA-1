@@ -45,11 +45,12 @@ $(function() {
                 // display search results table, and empty it
                 $('#search_results').css('display', 'block');
                 var table = $('#search_results_table');
-                table.html('');
+                table.html('<tr><td>Student ID</td><td>Name</td><td>ECA ID</tr>');
                 // make rows for each student result...
                 $.each(data, function(index, value) {
                     data = value.fields;
-                    var row = $('<tr><td class="result_id">' + value.pk + '</td><td class="result_name">' + data.first_name + ' ' + data.last_name + '</td></tr>');
+                    var row = $('<tr><td class="result_sid">' + data.student_id + '</td><td class="result_name">' +
+                        data.first_name + ' ' + data.last_name + '</td><td class="result_id">' + value.pk + '</td></tr>');
                     row.hover(function() {
                         $(this).css('background-color', '#ff0000');
                     },
@@ -89,6 +90,7 @@ $(function() {
             $('#last_name').html(data.last_name);
             $('#email').html(data.email);
             $('#address').html(data.address);
+            $('#student_id').html(data.student_id);
         })
             .fail(function() {
                 // if it fails, reset to the most recent valid one.

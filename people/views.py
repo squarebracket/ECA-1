@@ -10,7 +10,7 @@ from people.models import Student
 def search_student(request, info):
 
     if unicode(info).isnumeric():
-        return HttpResponse(serializers.serialize('json', Student.objects.filter(id__startswith=info)))
+        return HttpResponse(serializers.serialize('json', Student.objects.filter(student_id__startswith=info)))
     students = Student.objects.all()
     for term in info.split():
         students = students.filter(Q(first_name__icontains=term) | Q(last_name__icontains=term))

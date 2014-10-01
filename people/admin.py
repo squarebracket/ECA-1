@@ -9,8 +9,8 @@ def create_user_from_student(modeladmin, request, queryset):
         student.create_user(DEFAULT_PASSWORD)
 
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ['full_name', 'id', 'email', 'address']
-    search_fields = ['first_name', 'last_name', 'id']
+    list_display = ['full_name', 'student_id', 'email', 'address']
+    search_fields = ['first_name', 'last_name', 'student_id']
     exclude = ['edited', ]
     actions = [create_user_from_student]
 
