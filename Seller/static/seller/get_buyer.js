@@ -3,8 +3,85 @@
  */
 $ = django.jQuery;
 $(function() {
+    // Insert results table into DOM
+    $('#id_buyer').after('<div id="search_results" style="width: 300px; position: absolute; border: 2px solid black; background-color: white; display: none; z-index: 10;">' +
+        '<table id="search_results_table" style="width: 100%;"></table>' +
+        '</div>');
+    $('#id_buyer').after('<div id="info"></div>')
+    $('#search_results').css('left', $('#id_buyer').offset().left + $('#id_buyer').outerWidth());
+    $('#search_results').css('top', $('#id_buyer').offset().top);
+
+    // The number of results returned is used for hiding table if num_results <= 0,
+    // and for auto-selecting student if num_results = 1
+    var num_results = 0;
+    var last_request = null;
+    // object mapping request URLs -> request objects
+    var requests = {};
+    var last_search_query = '';
+
+
+    $('#id_buyer').keyup(function() {
+
+        if ($(this).val() == '') { return; }
+
+        last_search_query = '/search_student/' + $('#id_buyer').val() + '/';
+        console.log('request for ' + last_search_query);
+
+        last_request = $.getJSON('/search_student/' + $('#id_buyer').val() + '/')
+            .success(function(data) {
+                // if it's the most recent ajax call
+                if (this.url == last_search_query) {
+                    // ensure no others complete after this one
+                    console.log('Request for ' + this.url + 'completed: ');
+                    delete requests[last_search_query];
+                    for (request in requests) {
+                        requests[request].abort();
+                        delete requests[request];
+                        console.log("Request " + request + ' aborted');
+                    }
+                }
+                //if (data.length <= 0) { return; }
+                num_results = data.length;
+                // display search results table, and empty it
+                $('#search_results').css('display', 'block');
+                var table = $('#search_results_table');
+                table.html('');
+                // make rows for each student result...
+                $.each(data, function(index, value) {
+                    data = value.fields;
+                    var row = $('<tr><td class="result_id">' + value.pk + '</td><td class="result_name">' + data.first_name + ' ' + data.last_name + '</td></tr>');
+                    row.hover(function() {
+                        $(this).css('background-color', '#ff0000');
+                    },
+                    function() {
+                        $(this).css('background-color', '#ffffff');
+                    });
+                    row.mousedown(function() {
+                        $('#id_buyer').val($(this).find('.result_id').html());
+                    });
+                    table.append($(row));
+                })
+//            for (x in this) {
+//                current = $('#info').html();
+//                $('#info').html(current + x + ' = ' + this[x] + '<br>');
+//            }
+            });
+        requests[last_search_query] = last_request;
+    });
+
+    //// EVENT ACTION FOR BUYER FOCUSOUT
     var original_id = $('#id_buyer').val();
+
     $('#id_buyer').focusout(function () {
+        if ($('#id_buyer').val() == '') { return; }
+        // if a search returned only 1 result, automatically take it
+        if (num_results == 1) {
+            var id = $('#search_results_table').find('.result_id').html();
+            $('#id_buyer').val(id);
+        }
+        // hide results table, if shown
+        $('#search_results').css('display', 'none');
+        // attempt to get student object
         $.getJSON('/get_student/' + $('#id_buyer').val() + '/', function (data, success_text, jqXHR) {
             original_id = data[0].pk;
             data = data[0].fields;
@@ -14,8 +91,10 @@ $(function() {
             $('#address').html(data.address);
         })
             .fail(function() {
+                // if it fails, reset to the most recent valid one.
                 alert("Student with that ID does not exist in the database.");
                 $('#id_buyer').val(original_id);
+                $('#search_results').css('display', 'none');
             });
     });
     $.fn.extend({

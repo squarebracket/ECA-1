@@ -6,8 +6,8 @@ from django.db.models.signals import post_save
 # Create your models here.
 class Student(models.Model):
     id = models.IntegerField(primary_key=True)
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
+    first_name = models.CharField(max_length=50, db_index=True)
+    last_name = models.CharField(max_length=50, db_index=True)
     email = models.EmailField(max_length=254, unique=True)
     address = models.TextField()
     postal_code = models.CharField(max_length=10)
