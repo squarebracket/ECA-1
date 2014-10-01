@@ -28,8 +28,3 @@ class Student(models.Model):
 
     class Meta:
         ordering = ['last_name', 'first_name']
-
-@receiver(post_save, sender=Student)
-def mark_custom(instance=None, **kwargs):
-    instance.edited = True
-    instance.save()

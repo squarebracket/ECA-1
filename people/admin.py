@@ -11,8 +11,12 @@ def create_user_from_student(modeladmin, request, queryset):
 class StudentAdmin(admin.ModelAdmin):
     list_display = ['full_name', 'id', 'email', 'address']
     search_fields = ['first_name', 'last_name', 'id']
-    exclude = ['edited',]
+    exclude = ['edited', ]
     actions = [create_user_from_student]
+
+    def save_model(self, request, obj, form, change):
+        obj.edited = True
+        obj.save()
 
 
 admin.site.register(Student, StudentAdmin)
