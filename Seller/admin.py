@@ -12,7 +12,7 @@ class ReceiptLineItemInline(admin.TabularInline):
     model = LineItem
     extra = 0
     readonly_fields = ('amount', 'unit_cost', )
-    # template = "admin/thing/tabular_custom.html"
+    # template = "admin/seller/tabular_custom.html"
     # form = LineItemForm
 
     fields = ['receipt', 'quantity', 'item', 'unit_cost', 'amount']

@@ -45,7 +45,7 @@ class Item(models.Model):
 
 class LineItem(models.Model):
     receipt = models.ForeignKey(Receipt)
-    quantity = models.PositiveSmallIntegerField()
+    quantity = models.SmallIntegerField()
     item = models.ForeignKey(Item)
 
     @property
@@ -78,7 +78,7 @@ def make_receipt(sender, instance=None, update_fields=None, **kwargs):
 
     Attached is your purchase receipt'''
     m = gmail.Message(subject="Receipt", to=to, text=text, attachments=[pdf.filename,])
-    # g.send(m)
+    g.send(m)
 
 
 @receiver(post_save, sender=Receipt)
