@@ -39,7 +39,7 @@ class PDFReceipt:
                 "$%.2f" % lineitem.item.cost,
                 "$%.2f" % lineitem.amount])
         rows.append(['', '', Paragraph('<b>TOTAL</b>', styles['Normal']), Paragraph("<b>$%.2f</b>" % self.receipt.receipt_total(), styles['Normal'])])
-        t = Table(rows, repeatRows=1, splitByRow=True, colWidths=[3*inch, 1*inch, 1*inch, 1*inch], style=[('ALIGN', (1, 0), (-1, -2), 'RIGHT'),])
+        t = Table(rows, repeatRows=1, splitByRow=True, colWidths=[3.5*inch, 1*inch, 1*inch, 1*inch], style=[('ALIGN', (1, 0), (-1, -1), 'RIGHT'),])
         self.story.append(t)
 
     def make_receipt_details(self):
