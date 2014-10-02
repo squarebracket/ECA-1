@@ -46,11 +46,11 @@ class IIFReceiptWrapper(Receipt):
             writerow['account'] = '1499'
         elif self.paymeth == 'DEBIT':
             writerow['account'] = '1111'
-        writerow['name'] = self.buyer.full_name
+        writerow['name'] = ''
         writerow['class'] = ''
         writerow['amount'] = self.receipt_total()
         writerow['docnum'] = ''
-        writerow['memo'] = 'Items sold by %s' % (self.seller.get_full_name(), )
+        writerow['memo'] = 'Items sold to %s (by %s)' % (self.buyer.full_name, self.seller.get_full_name())
         writerow['clear'] = 'N'
         writerow['f1'] = 'N'
 
@@ -65,11 +65,11 @@ class IIFReceiptWrapper(Receipt):
             writerow['trnstype'] = 'CASH SALE'
             writerow['date'] = self.timestamp.date()
             writerow['account'] = lineitem.item.income_account
-            writerow['name'] = self.buyer.full_name
+            writerow['name'] = ''
             writerow['class'] = lineitem.item.qb_class
             writerow['amount'] = -1 * lineitem.amount
             writerow['docnum'] = ''
-            writerow['memo'] = 'Items sold by %s' % (self.seller.get_full_name(), )
+            writerow['memo'] = 'Items sold to %s (by %s)' % (self.buyer.full_name, self.seller.get_full_name())
             writerow['clear'] = 'N'
             writerow['f1'] = -1 * lineitem.quantity
             writerow['f2'] = lineitem.item.cost
