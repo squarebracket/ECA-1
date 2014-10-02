@@ -1,3 +1,5 @@
+from django.contrib.admin.models import LogEntry
+from django.contrib.contenttypes.models import ContentType
 import gmail
 from django.db import models
 from django.contrib.auth.models import User
@@ -68,20 +70,6 @@ class TransactionLog(models.Model):
 
 
 @receiver(post_save, sender=Receipt)
-def make_receipt(sender, instance=None, update_fields=None, **kwargs):
-    from pdf import PDFReceipt
-    pdf = PDFReceipt(instance)
-    g = gmail.GMail("ECA Office Manager <office@ecaconcordia.ca>", 'ecaeca1234')
-    to = "%s <%s>" % (instance.buyer.full_name, instance.buyer.email)
-    text = '''
-    Hello,
-
-    Attached is your purchase receipt'''
-    m = gmail.Message(subject="Receipt", to=to, text=text, attachments=[pdf.filename,])
-    g.send(m)
-
-
-@receiver(post_save, sender=Receipt)
 def add_to_log(sender, created=None, instance=None, update_fields=None, **kwargs):
     if created is True:
         msg = 'Receipt %i created\n' % (instance.pk, )
@@ -89,9 +77,26 @@ def add_to_log(sender, created=None, instance=None, update_fields=None, **kwargs
     if created is False:
         msg = 'Receipt %i EDITED\n' % (instance.pk, )
         fmt = '%i x %s  - %.2f\n'
-
+    print instance.lineitem_set.all()
     for line_item in instance.lineitem_set.all():
         msg += fmt % (line_item.quantity, line_item.item.item_code, line_item.amount)
 
     t = TransactionLog(message=msg)
     t.save()
+
+@receiver(post_save, sender=LogEntry)
+def make_receipt(sender, **kwargs):
+    instance = kwargs['instance']
+    ct = ContentType.objects.get_for_model(Receipt)
+    if ct.id == instance.content_type_id:
+        from pdf import PDFReceipt
+        receipt = Receipt.objects.get(id=instance.object_id)
+        pdf = PDFReceipt(receipt)
+        g = gmail.GMail("ECA Office Manager <office@ecaconcordia.ca>", 'ecaeca1234')
+        to = "%s <%s>" % (receipt.buyer.full_name, receipt.buyer.email)
+        text = '''
+        Hello,
+
+        Attached is your purchase receipt'''
+        m = gmail.Message(subject="Receipt", to=to, text=text, attachments=[pdf.filename,])
+        #g.send(m)
