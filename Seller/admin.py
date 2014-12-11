@@ -46,7 +46,7 @@ class ReceiptAdmin(admin.ModelAdmin):
     excludes = ['seller']
     form = ReceiptForm
     readonly_fields = ('student_id', 'first_name', 'last_name', 'email', 'address', 'receipt_total')
-
+    search_fields = ['buyer__student_id', 'buyer__last_name', 'buyer__first_name', 'id']
     fields = (('buyer', 'student_id'), ('first_name', 'last_name', 'email', 'address'), ('paymeth', 'receipt_total'))
 
     def wrap_in_span(self, attr, instance):
