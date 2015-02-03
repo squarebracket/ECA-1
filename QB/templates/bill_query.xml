@@ -1,0 +1,4 @@
+        <{{ type }}QueryRq>
+            <TxnID>{{ txn_id }}</TxnID>
+        <IncludeLinkedTxns>true</IncludeLinkedTxns>
+        </{{ type }}QueryRq>

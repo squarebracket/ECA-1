@@ -1,0 +1,13 @@
+<{{ txn_type }}QueryRq>
+    {% if ref_number %}
+    <RefNumber>{{ ref_number }}</RefNumber>
+    {% elif txn_id %}
+    <TxnID>{{ txn_id }}</TxnID>
+    {% endif %}
+    {% if line_items %}
+    <IncludeLineItems>true</IncludeLineItems>
+    {% endif %}
+    {% if linked_transactions %}
+    <IncludeLinkedTransactions>true</IncludeLinkedTransactions>
+    {% endif %}
+</{{ txn_type }}QueryRq>

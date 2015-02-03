@@ -2,7 +2,7 @@ from reportlab.platypus import Paragraph, Frame, Table, PageTemplate, BaseDocTem
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.lib.pagesizes import letter
-from Seller.models import Receipt
+from Seller.models import Receipt, ReceiptLineItem
 from reportlab.lib import colors
 from os.path import join as path_join
 from Inventory.settings import RECEIPT_DOCS_DIR
@@ -10,7 +10,7 @@ styles = getSampleStyleSheet()
 
 Title = "Hello world"
 pageinfo = "platypus example"
-receipt_info = []
+receipt_info = []  # Why did I have to do this? I forget.
 
 
 class PDFReceipt:
@@ -18,7 +18,7 @@ class PDFReceipt:
     def __init__(self, receipt):
         global receipt_info
         if type(receipt) is not Receipt:
-            raise ValueError('receipt passed to PDFReceipt is not, in fact, a Receipt object')
+            raise ValueError("Expected '%s' object, got '%s' instead." % (Receipt, type(receipt)))
         self.story = []
         self.receipt = receipt
         receipt_info = self.make_receipt_details()
@@ -32,28 +32,27 @@ class PDFReceipt:
 
     def make_story(self):
         rows = [['Item', 'Quantity', 'Unit cost', 'Amount'], ]
-        for lineitem in self.receipt.lineitem_set.all():
+        for line_item in ReceiptLineItem.objects.filter(transaction=self.receipt.id):
             rows.append([
-                str(lineitem.item.name),
-                str(lineitem.quantity),
-                "$%.2f" % lineitem.item.cost,
-                "$%.2f" % lineitem.amount])
+                str(line_item.item.name),
+                str(line_item.quantity),
+                "$%.2f" % line_item.item.cost,
+                "$%.2f" % line_item.amount])
         rows.append(['', '', Paragraph('<b>TOTAL</b>', styles['Normal']), Paragraph("<b>$%.2f</b>" % self.receipt.receipt_total(), styles['Normal'])])
         t = Table(rows, repeatRows=1, splitByRow=True, colWidths=[3.5*inch, 1*inch, 1*inch, 1*inch], style=[('ALIGN', (1, 0), (-1, -1), 'RIGHT'),])
         self.story.append(t)
 
     def make_receipt_details(self):
         return [
-            ['Date', self.receipt.timestamp.strftime('%B %d, %Y')],
+            ['Date', self.receipt.modified.strftime('%B %d, %Y')],
             ['Purchaser', Paragraph(self.receipt.buyer.full_name, styles['Normal'])],
             ['Payment method', self.receipt.paymeth],
             ['Employee', Paragraph("%s %s" % (self.receipt.seller.first_name, self.receipt.seller.last_name), styles['Normal'])],
-            ['Receipt #', str(self.receipt.pk)],
+            ['Receipt #', str(self.receipt.id)],
         ]
 
 def receipt_details(canvas, document):
     import os
-    print os.getcwd()
     canvas.bottomUp = 1
     t = Table(receipt_info, repeatRows=1, style=[('GRID', (0, 0), (-1, -1), 0.5, colors.grey), ])
     t.wrap(3.5*inch, 1.5*inch)

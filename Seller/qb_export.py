@@ -2,6 +2,7 @@ __author__ = 'chuck'
 from Seller.models import Receipt, Item
 from datetime import datetime, timedelta
 import csv
+import django.template.base
 
 types = {
     'HDI': 'Store Apparel:Sweater:Hoodie',

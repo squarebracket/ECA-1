@@ -1,5 +1,6 @@
 from django.contrib import admin
-from people.models import Student
+from django.contrib.auth.models import User
+from people.models import Student, Person, DivisionPerson
 from Inventory.settings import DEFAULT_PASSWORD
 
 
@@ -7,6 +8,7 @@ from Inventory.settings import DEFAULT_PASSWORD
 def create_user_from_student(modeladmin, request, queryset):
     for student in queryset:
         student.create_user(DEFAULT_PASSWORD)
+
 
 class StudentAdmin(admin.ModelAdmin):
     list_display = ['full_name', 'student_id', 'email', 'address']
@@ -19,4 +21,16 @@ class StudentAdmin(admin.ModelAdmin):
         obj.save()
 
 
+class DivisionPersonAdmin(admin.ModelAdmin):
+    def save_model(self, request, obj, form, change):
+        try:
+            user = User.objects.get(email=obj.division_email)
+        except User.DoesNotExist:
+            user = None
+        obj.user = user
+        obj.save()
+
+
 admin.site.register(Student, StudentAdmin)
+admin.site.register(Person)
+admin.site.register(DivisionPerson)

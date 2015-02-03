@@ -1,0 +1,8 @@
+django
+python-social-auth
+gspread
+reportlab
+django-choices
+beautifulsoup4
+lxml
+django-sortedm2m

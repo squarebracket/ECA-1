@@ -1,0 +1,41 @@
+    <CustomDetailReportQueryRq>
+        <CustomDetailReportType>CustomTxnDetail</CustomDetailReportType>
+        <DisplayReport>false</DisplayReport>
+
+        {% if not date_macro %}
+        <ReportPeriod>
+            <FromReportDate>{{ from_date }}</FromReportDate>
+            <ToReportDate>{{ to_date }}</ToReportDate>
+        </ReportPeriod>
+        {% elif date_macro %}
+        <ReportDateMacro>{{ date_macro }}</ReportDateMacro>
+        {% endif %}
+
+        {% if mod_from_date and mod_to_date %}
+        <ReportModifiedDateRangeFilter>
+            <FromReportModifiedDate>{{ mod_from_date }}</FromReportModifiedDate>
+            <ToReportModifiedDate>{{ mod_to_date }}</ToReportModifiedDate>
+        </ReportModifiedDateRangeFilter>
+        {% elif mod_date_macro %}
+        <ReportModifiedDateRangeFilter>
+            <ReportModifiedDateRangeMacro>{{ mod_date_macro }}</ReportModifiedDateRangeMacro>
+        </ReportModifiedDateRangeFilter>
+        {% endif %}
+
+        <SummarizeRowsBy>TotalOnly</SummarizeRowsBy>
+
+        <IncludeColumn>Account</IncludeColumn>
+        <IncludeColumn>Class</IncludeColumn>
+        <IncludeColumn>Amount</IncludeColumn>
+        <IncludeColumn>Date</IncludeColumn>
+        <IncludeColumn>ClearedStatus</IncludeColumn>
+        <IncludeColumn>PaidStatus</IncludeColumn>
+        <IncludeColumn>PrintStatus</IncludeColumn>
+        <IncludeColumn>RefNumber</IncludeColumn>
+        <!-- LatestOrPriorState ==> Total Sales Tax -->
+        <IncludeColumn>LatestOrPriorState</IncludeColumn>
+        <IncludeColumn>NameContact</IncludeColumn>
+        <IncludeColumn>TxnID</IncludeColumn>
+        <IncludeColumn>TxnNumber</IncludeColumn>
+        <IncludeColumn>TxnType</IncludeColumn>
+    </CustomDetailReportQueryRq>

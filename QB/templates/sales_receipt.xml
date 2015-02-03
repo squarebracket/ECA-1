@@ -1,0 +1,34 @@
+  <SalesReceiptAddRq>
+    <SalesReceiptAdd defMacro="tester">
+        <CustomerRef>
+            {% if buyer.qb_list_id %}<ListID>{{ buyer.qb_list_id }}</ListID>{% endif %}
+            {% if buyer.full_name %}<FullName>{{ buyer.full_name }}</FullName>{% endif %}
+        </CustomerRef>
+        <TxnDate>{{ date }}</TxnDate>
+        {% if paymeth %}
+        <PaymentMethodRef>
+            <FullName>{{ paymeth.name }}</FullName>
+        </PaymentMethodRef>
+        {% endif %}
+        <Memo>{{memo}}</Memo>
+        <DepositToAccountRef>
+            <ListID>{{ split_account.qb_list_id}}</ListID>
+        </DepositToAccountRef>
+    {% for line_item in line_items %}
+        <SalesReceiptLineAdd>
+            <ItemRef>
+                <FullName>{{ line_item.item.name }}</FullName>
+            </ItemRef>
+            <Desc>{{line_item.item.desc}}</Desc>
+            <Quantity>{{line_item.quantity}}</Quantity>
+            <Rate>{{line_item.amount}}</Rate>
+            <ClassRef>
+                <ListID>{{line_item.budget_line.qb_id}}</ListID>
+            </ClassRef>
+            <SalesTaxCodeRef>
+                <ListID>{{ line_item.tax_code.qb_id }}</ListID>
+            </SalesTaxCodeRef>
+        </SalesReceiptLineAdd>
+    {% endfor %}
+    </SalesReceiptAdd>
+  </SalesReceiptAddRq>

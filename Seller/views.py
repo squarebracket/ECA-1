@@ -1,9 +1,11 @@
-from django.shortcuts import render
 from django.core import serializers
 from django.http import HttpResponse, HttpResponseBadRequest
 from reportlab.pdfgen import canvas
 from Seller.models import Item
-
+from datetime import datetime
+from qb_export import IIFReceiptWrapper
+from django.template import RequestContext, loader
+from django.contrib.auth.decorators import login_required
 
 
 # Create your views here.
@@ -14,7 +16,7 @@ def get_item(request, sid):
         return HttpResponseBadRequest('Item does not exist')
     return HttpResponse(data)
 
-
+@login_required()
 def some_view(request):
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'filename="somefilename.pdf"'
@@ -30,3 +32,22 @@ def some_view(request):
     p.showPage()
     p.save()
     return response
+
+
+def export(request):
+    if request.POST:
+
+        s = datetime.utcfromtimestamp(float(request.POST.get('start')))
+        e = datetime.utcfromtimestamp(float(request.POST.get('end')))
+
+        objs = IIFReceiptWrapper.objects.filter(timestamp__range=(s, e))
+        c = {
+            'receipts': objs,
+            'start': s.strftime('%Y-%m-%d'),
+            'end': e.strftime('%Y-%m-%d'),
+        }
+    else:
+        c = None
+    template = loader.get_template('seller/export.html')
+    context = RequestContext(request, c)
+    return HttpResponse(template.render(context))

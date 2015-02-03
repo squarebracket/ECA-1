@@ -4,12 +4,12 @@
 $ = django.jQuery;
 $(function() {
     // Insert results table into DOM
-    $('#id_buyer').after('<div id="search_results" style="width: 300px; position: absolute; border: 2px solid black; background-color: white; display: none; z-index: 10;">' +
+    $('#id_searcher').after('<div id="search_results" style="width: 300px; position: absolute; border: 2px solid black; background-color: white; display: none; z-index: 10;">' +
         '<table id="search_results_table" style="width: 100%;"></table>' +
         '</div>');
-    $('#id_buyer').after('<div id="info"></div>')
-    $('#search_results').css('left', $('#id_buyer').offset().left + $('#id_buyer').outerWidth());
-    $('#search_results').css('top', $('#id_buyer').offset().top);
+    $('#id_searcher').after('<div id="info"></div>')
+    $('#search_results').css('left', $('#id_searcher').offset().left + $('#id_searcher').outerWidth());
+    $('#search_results').css('top', $('#id_searcher').offset().top);
 
     // The number of results returned is used for hiding table if num_results <= 0,
     // and for auto-selecting student if num_results = 1
@@ -20,14 +20,14 @@ $(function() {
     var last_search_query = '';
 
 
-    $('#id_buyer').keyup(function() {
+    $('#id_searcher').keyup(function() {
 
         if ($(this).val() == '') { return; }
 
-        last_search_query = '/search_student/' + $('#id_buyer').val() + '/';
+        last_search_query = '/search_student/' + $('#id_searcher').val() + '/';
         console.log('request for ' + last_search_query);
 
-        last_request = $.getJSON('/search_student/' + $('#id_buyer').val() + '/')
+        last_request = $.getJSON('/search_student/' + $('#id_searcher').val() + '/')
             .success(function(data) {
                 // if it's the most recent ajax call
                 if (this.url == last_search_query) {
@@ -47,10 +47,9 @@ $(function() {
                 var table = $('#search_results_table');
                 table.html('<tr><td>Student ID</td><td>Name</td><td>ECA ID</tr>');
                 // make rows for each student result...
-                $.each(data, function(index, value) {
-                    data = value.fields;
+                $.each(data, function(index, data) {
                     var row = $('<tr><td class="result_sid">' + data.student_id + '</td><td class="result_name">' +
-                        data.first_name + ' ' + data.last_name + '</td><td class="result_id">' + value.pk + '</td></tr>');
+                        data.full_name + '</td><td class="result_id">' + data.pk + '</td></tr>');
                     row.hover(function() {
                         $(this).css('background-color', '#ff0000');
                     },
@@ -59,6 +58,7 @@ $(function() {
                     });
                     row.mousedown(function() {
                         $('#id_buyer').val($(this).find('.result_id').html());
+                        $('#id_searcher').val('');
                     });
                     table.append($(row));
                 })
@@ -73,8 +73,8 @@ $(function() {
     //// EVENT ACTION FOR BUYER FOCUSOUT
     var original_id = $('#id_buyer').val();
 
-    $('#id_buyer').focusout(function () {
-        if ($('#id_buyer').val() == '') { return; }
+    $('#id_searcher').focusout(function () {
+        if ($('#id_searcher').val() == '') { return; }
         // if a search returned only 1 result, automatically take it
         if (num_results == 1) {
             var id = $('#search_results_table').find('.result_id').html();
@@ -83,15 +83,7 @@ $(function() {
         // hide results table, if shown
         $('#search_results').css('display', 'none');
         // attempt to get student object
-        $.getJSON('/get_student/' + $('#id_buyer').val() + '/', function (data, success_text, jqXHR) {
-            original_id = data[0].pk;
-            data = data[0].fields;
-            $('#first_name').html(data.first_name);
-            $('#last_name').html(data.last_name);
-            $('#email').html(data.email);
-            $('#address').html(data.address);
-            $('#student_id').html(data.student_id);
-        })
+        $.getJSON('/get_person/' + $('#id_buyer').val() + '/', set_person_data)
             .fail(function() {
                 // if it fails, reset to the most recent valid one.
                 alert("Student with that ID does not exist in the database.");
@@ -107,6 +99,16 @@ $(function() {
             return $(this).find('.field-amount > p').html('$' + (qty * unit_cost).toFixed(2));
         }
     });
+
+    function set_person_data(person, success_text, jqXHR) {
+        original_id = person.pk;
+        $('#first_name').html(person.first_name);
+        $('#last_name').html(person.last_name);
+        $('#email').html(person.email);
+        $('#address').html(person.address);
+        $('#student_id').html(person.student_id);
+        $('#id_searcher').val('');
+    }
 
     function recalculateReceipt() {
         var total_amount_span = $('#receipt_total');

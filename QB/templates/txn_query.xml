@@ -1,0 +1,16 @@
+        <TransactionQueryRq>
+            {% if txn_id %}
+            <TxnID>{{ txn_id }}</TxnID>
+            {% else %}
+            <TransactionDateRangeFilter>
+                <FromTxnDate>{{ from_txn_date }}</FromTxnDate>
+                <ToTxnDate>{{ to_txn_date }}</ToTxnDate>
+            </TransactionDateRangeFilter>
+                {% if class %}
+            <TransactionClassFilter>
+                <FullNameWithChildren>{{ class }}</FullNameWithChildren>
+            </TransactionClassFilter>
+                    {% endif %}
+            <TransactionDetailLevelFilter>AllExceptSummary</TransactionDetailLevelFilter>
+            {% endif %}
+        </TransactionQueryRq>

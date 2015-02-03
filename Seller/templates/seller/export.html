@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.11.2/themes/smoothness/jquery-ui.css">
+    <script src="//code.jquery.com/jquery-1.10.2.js"></script>
+    <script src="//code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
+    <script>
+        $(function() {
+            $("#dp-start").datepicker({dateFormat: "yy-mm-dd"});
+            $("#dp-end").datepicker({dateFormat: "yy-mm-dd"});
+            {% if start and end %}
+            $("#dp-start").datepicker('setDate', "{{ start }}");
+            $("#dp-end").datepicker('setDate', "{{ end }}");
+            {% endif %}
+            $("#f").submit(function() {
+                alert($("#dp-start").datepicker( "getDate").getTime()/1000);
+                $("#start").val($("#dp-start").datepicker( "getDate").getTime()/1000);
+                $("#end").val($("#dp-end").datepicker( "getDate" ).getTime()/1000);
+            })
+
+        });
+    </script>
+</head>
+<body>
+<br>
+<br>
+<form action="/export/" method="post" id="f">
+{% csrf_token %}
+    <input type="hidden" name="start" id="start" value="" />
+    <input type="hidden" name="end" id="end" value="" />
+<table>
+    <tr>
+        <td><input type="text" id="dp-start" /></td>
+        <td><input type="text" id="dp-end" /></td>
+        <td><input type="submit" /></td>
+    </tr>
+</table>
+</form>
+
+<br>
+<br>
+
+{% if receipts %}
+<table>
+    <tr>
+        <td>Receipt ID</td>
+        <td>Name</td>
+        <td>Amount</td>
+    </tr>
+    {% for receipt in receipts %}
+    <tr>
+        <td>{{ receipt.id }}</td>
+        <td>{{ receipt.seller.first_name }} {{ receipt.seller.last_name }}</td>
+        <td>{{ receipt.receipt_total }}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% endif %}
+</body>
+</html>
