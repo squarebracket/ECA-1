@@ -1,14 +1,15 @@
 #!usr/bin/python
+import random
 import xml.etree.ElementTree
 from datetime import datetime
 
-from django.template import Template, Context
+from django.template import Template, Context, TemplateDoesNotExist
 from django.template.loader import get_template
 from django.conf import settings
 
 from UnicodeCSV import UnicodeDictWriter
 import bs4
-from core.models import Account
+from core.models import Account, Item
 from people.models import Person, Student
 from Seller.models import Receipt, ReceiptLineItem
 from core.models import Transaction as CoreTransaction, LineItem as CoreLineItem, BudgetLine
@@ -25,22 +26,22 @@ if __name__ == "__main__":
     settings.configure(TEMPLATE_DEBUG=True, )
 
 
-template_files = ['sales_receipt', 'person_change', 'find_person', 'create_customer', 'find_account', 'custom_report',
-                  'bill_query', 'bill_payment_check_query', 'check_query', 'payment_query', 'txn_query', 'a_query',
-                  'cheques_and_deposits_query', 'host_query', 'custom_report2', 'data_ext_def_ref',
-                  'account_query']
+# template_files = ['sales_receipt', 'person_change', 'find_person', 'create_customer', 'find_account', 'custom_report',
+#                   'bill_query', 'bill_payment_check_query', 'check_query', 'payment_query', 'txn_query', 'a_query',
+#                   'cheques_and_deposits_query', 'host_query', 'custom_report2', 'data_ext_def_ref',
+#                   'account_query']
+#
+# templates = {}
+# import os
+# os.chdir(r'C:\Users\chuck\PycharmProjects\Inventory\QB\templates')
+#
+# for template in template_files:
+#     f = open('%s.xml' % template, 'r')
+#     templates[template] = Template(f.read())
+#     f.close()
 
-templates = {}
-import os
-os.chdir(r'C:\Users\chuck\PycharmProjects\Inventory\QB\templates')
-
-for template in template_files:
-    f = open('%s.xml' % template, 'r')
-    templates[template] = Template(f.read())
-    f.close()
-
-os.chdir(r'C:\Users\chuck\PycharmProjects\Inventory')
-EHD_BLK_L = "Store Apparel:Sweater - with logo:Hoodie:EHD-BLK-L"
+# os.chdir(r'C:\Users\chuck\PycharmProjects\Inventory')
+# EHD_BLK_L = "Store Apparel:Sweater - with logo:Hoodie:EHD-BLK-L"
 
 
 class QBTxnRet(object):
@@ -53,14 +54,17 @@ class QBAddress(object):
 
     def __init__(self, xml=None):
         if xml is not None:
-            # TODO: typechecking on xml
-            self.addr1 = xml.find('Addr1').string
-            self.addr2 = xml.find('Addr2').string
-            self.city = xml.find('City').string
-            self.state = xml.find('State').string
-            self.postal_code = xml.find('PostalCode').string
-            if xml.find('Country'):
-                self.country = xml.find('Country').string
+            try:
+                # TODO: typechecking on xml
+                self.addr1 = xml.find('Addr1').string
+                self.addr2 = xml.find('Addr2').string
+                self.city = xml.find('City').string
+                self.state = xml.find('State').string
+                self.postal_code = xml.find('PostalCode').string
+                if xml.find('Country'):
+                    self.country = xml.find('Country').string
+            except AttributeError:
+                pass
         else:
             self.addr1 = None
             self.addr2 = None
@@ -180,7 +184,7 @@ class QBLineItem(object):
 
 # TODO: Implement with QBRqRs
 class QBSalesReceipt(object):
-    TEMPLATE = templates['sales_receipt']
+    # TEMPLATE = templates['sales_receipt']
 
     def __init__(self, person, date, memo='Items sold through counter'):
         if isinstance(person, QBPerson):
@@ -502,7 +506,7 @@ xml_to_transaction_class_mapping = {
 
 def get_linked_transactions(txn):
     c = Context({'type': txn.txn_type, 'txn_id': txn.parent_txn_id})
-    qbxml_query = templates['bill_query'].render(c)
+    qbxml_query = get_template('bill_query.xml').render(c)
     # print qbxml_query
     response_string = qbc.query(qbxml_query)
     # print response_string
@@ -605,7 +609,7 @@ class QBReport(object):
 class QBCheque(object):
 
     def __init__(self, txn_type, ref_number=None, txn_id=None, line_items=True, linked_transactions=False):
-        self.template = templates['check_query']
+        self.template = get_template('check_query.xml')
         context = Context({'ref_number': ref_number, 'txn_id': txn_id, 'line_items': line_items,
                            'linked_transactions': linked_transactions, 'txn_type': txn_type})
         self.query_string = self.template.render(context)
@@ -659,7 +663,7 @@ class QBCheque(object):
 class QBTxnReportByClass(object):
 
     def __init__(self, class_, from_txn_date, to_txn_date):
-        self.template = templates['txn_query']
+        self.template = get_template('txn_query.xml')
         self.from_txn_date = from_txn_date
         self.to_txn_date = to_txn_date
         self.class_ = class_
@@ -764,11 +768,12 @@ class QBAccountQuery(object):
         'Income': Account.AccountType.INCOME,
         'CostOfGoodsSold': Account.AccountType.COGS,
         'Expense': Account.AccountType.EXPENSE,
-        'NonPosting': Account.AccountType.NON_POSTING
+        'NonPosting': Account.AccountType.NON_POSTING,
+        'OtherCurrentAsset': Account.AccountType.ACCOUNTS_RECEIVABLE,
     }
 
     def __init__(self):
-        self.query_string = templates['account_query'].render(Context())
+        self.query_string = get_template('account_query.xml').render(Context())
         with qbc.session():
             self.response_string = qbc.query(self.query_string)
         self.soup = bs4.BeautifulSoup(self.response_string, "xml")
@@ -777,11 +782,11 @@ class QBAccountQuery(object):
         for account_xml in accounts:
             try:
                 account = {}
-                qb_list_id = account_xml.ListID.text
+                account['qb_id'] = account_xml.ListID.text
                 account['name'] = account_xml.find('Name').text
                 if account_xml.ParentRef:
                     qb_parent_id = account_xml.ParentRef.ListID.text
-                    account['parent_account'] = Account.objects.get(qb_list_id=qb_parent_id)
+                    account['parent_account'] = Account.objects.get(qb_id=qb_parent_id)
                 account['number'] = int(account_xml.AccountNumber.text)
                 if account['number'] == 1499:
                     account['account_type'] = Account.AccountType.NON_DEPOSITED_FUNDS
@@ -807,7 +812,7 @@ class QBAccountQuery(object):
                 if account_xml.BankNumber:
                     account['bank_account_number'] = account_xml.BankNumber.text
                 account['qb_edit_sequence'] = account_xml.EditSequence.text
-                (account, created) = Account.objects.update_or_create(qb_list_id=qb_list_id, defaults=account)
+                (account, created) = Account.objects.update_or_create(number=account['number'], defaults=account)
                 account.save()
             except Exception:
                 print account_xml
@@ -872,7 +877,7 @@ def get_persons(person_object):
     if not isinstance(person_object, Person):
         raise Exception('Object passed to get_persons is not of type Person')
 
-    base_name = person_object.full_name
+    base_name = person_object.full_name.encode('ascii', 'ignore')
 
     person_regex = re.compile(r'(Customer|Vendor|OtherName)Ret')
 
@@ -886,9 +891,10 @@ def get_persons(person_object):
         if person.person_type != 'Customer':
             person.rename_with_type()
             print 'Found non-customer person'
-            return None
+            raise DoesNotExist("'%s' was not the right type" % person_object.full_name)
+        return person
     elif num_people == 0:
-        return None
+        raise DoesNotExist("'%s' was not found in QuickBooks" % person_object.full_name)
     elif num_people == 2:
         base_name = min(persons[0].name, persons[1].name)
         diff = max(persons[0].name, persons[1].name).replace(base_name, '')
@@ -930,6 +936,97 @@ def test_person(l):
                addr2=addr2, addr3=addr3, addr5=addr5, postal_code=postal_code).add()
     print a.status_code
     return a
+
+
+def make_the_customer(person):
+    first_name = person.first_name.encode('ascii', 'ignore')
+    last_name = person.last_name.encode('ascii', 'ignore')
+    full_name = person.full_name.encode('ascii', 'ignore')
+    postal_code = person.postal_code.encode('ascii', 'ignore')
+    if person.address.strip() != '' and person.address.strip() != '...' and person.address.strip() != '..':
+        try:
+            addr2, addr3, addr5 = person.address.encode('ascii', 'ignore').rsplit('\n', 2)
+        except ValueError:
+            try:
+                addr2, addr3 = person.address.encode('ascii', 'ignore').split('\n')
+                addr5 = ''
+            except ValueError:
+                print ' >' + person.address + '< '
+                raise
+        # addr2 = '%s %s' % (addr2, addr3)
+        # addr5 = addr5.rsplit('\n', 1)
+    else:
+        addr2 = ''
+        addr3 = ''
+        addr5 = ''
+
+    a = QBRqRs('create_customer2.xml', full_name=full_name, first_name=first_name, last_name=last_name,
+               addr2=addr2, addr3=addr3, addr5=addr5, postal_code=postal_code,
+               phone=person.phone, email=person.email).add()
+    # print a.status_code
+    return a
+
+
+def person_match(first_name, last_name, email, phone):
+    full_name = '%s %s' % (first_name, last_name)
+    try:
+        person = Person.objects.get(first_name=first_name, last_name=last_name)
+    except Person.DoesNotExist:
+        person = Person(first_name=first_name, last_name=last_name, email=email, phone=phone)
+        person.save()
+    qb_person = get_persons(person)
+    if not person:
+        try:
+            thing = QBRqRs3('customer').get(full_name=full_name)
+            print 'is qb'
+        except DoesNotExist:
+            print 'is not qb'
+            thing = QBRqRs3('customer').add(full_name=full_name, first_name=first_name,
+                                            last_name=last_name, phone=phone, email=email)
+        person.qb_list_id = thing.list_id
+        person.qb_edit_sequence = thing.edit_sequence
+        person.save()
+    return person
+
+
+# def make_sales_receipt(d):
+#     sdk_object = 'sales_receipt'
+#     a = int(datetime.now().strftime('%Y%j%H%M%S%f'))
+#     random.seed(a)
+#     b = a + random.randrange(0, 999)
+#     receipt_macro = 'Receipt:%s' % b
+#     template = get_template('sales_receipt_add.xml')
+    # d = {}
+    # g = open('output.xml', 'wb')
+    # for row in spamreader:
+    #     d['date'] = datetime.datetime.strptime(row['DatePurchased'], '%m/%d/%Y %I:%M:%S %P').strftime('%Y-%m-%d')
+    #     d['memo'] = 'Sold to %s %s (%s)' % (row['FirstName'], row['LastName'], row['Email'])
+    #     blah = template.render(Context(d))
+    #     g.write(blah + '\n')
+    # g.close()
+
+    # d = {
+    #     'receipt_macro': receipt_macro,
+    #     'txn_date': d['date'],
+    #     'memo': receipt.total_memo,
+    #     'deposit_to_account_ref': receipt.split_account,
+    #     'line_items': [
+    #         {
+    #             'line_macro': 'line:%s' % (int(datetime.now().strftime('%Y%j%H%M%S%f')) + random.randrange(0, 999)),
+    #             'item_ref': line_item.item,
+    #             'desc': line_item.item.name,
+    #             'quantity': line_item.quantity,
+    #             'rate': line_item.item.cost,
+    #             'class_ref': line_item.item.budget_line,
+    #             'amount': line_item.amount,
+    #             'sales_tax_code_ref': line_item.tax_code,
+    #         }
+    #         for line_item in ReceiptLineItem.objects.filter(transaction=receipt)
+    #     ]
+    # }
+    # print 'line items going in:', d['line_items']
+    # new_obj = cls(sdk_object=sdk_object)
+    # new_obj.request = QBXMLWrapper.from_dict(d, sdk_object='sales_receipt')
 
 
 def benchmark():
@@ -1108,49 +1205,7 @@ class whatever(object):
 
 
 if __name__ == "__main__":
-    sales_receipt = QBSalesReceiptAdd('sales_receipt.xml')
-
-
-class SalesReceipt(QBRqRs2):
-
-    def __init__(self, receipt):
-        self.receipt = receipt
-        super(SalesReceipt, self).__init__(template='sales_receipt.xml')
-        qb_customer = get_persons(receipt.buyer)
-        if qb_customer is None:
-            addr2, addr3, addr5 = receipt.buyer.address.split('\n')
-            a = QBRqRs('create_customer2.xml', person=receipt.buyer, addr2=addr2,
-                       addr3=addr3, addr5=addr5).add()
-            receipt.buyer.qb_list_id = a.list_id
-            receipt.buyer.qb_edit_sequence = a.edit_sequence
-            receipt.buyer.save()
-        self.context_dict = {
-            'list_id': receipt.qb_id,
-            'amount': receipt.total_amount,
-            'split_account': receipt.split_account,
-            'buyer': receipt.buyer,
-            'date': receipt.date.strftime('%Y-%m-%d'),
-            'paymeth': receipt.paymeth,
-            'memo': receipt.total_memo,
-            'line_items': ReceiptLineItem.objects.filter(transaction=receipt),
-        }
-
-    def add(self, **kwargs):
-        if self.receipt.qb_id:
-            # TODO: Change to Django's IntegrityError maybe?
-            raise Exception("Object already exists in QuickBooks")
-        # TODO: extend self.context_dict with **kwargs
-        self._query(self.context_dict)
-        # elif self.num_returned == 0:
-        #     raise DoesNotExist('None exists for %s' % self.context)
-        self.receipt.qb_id = self.list_id
-        self.receipt.qb_edit_sequence = self.edit_sequence
-        self.receipt.save()
-        print self.receipt.qb_id, self.receipt.qb_edit_sequence
-        if self.num_returned > 1:
-            raise MultipleItemsReturned('More than one Ret object returned... what?')
-
-        return self
+    sales_receipt = QBSalesReceiptAdd('sales_receipt_add.xml')
 
 
 def camel_case_to_lower_case(string):
@@ -1165,3 +1220,485 @@ def camel_case_to_lower_case(string):
             new_string += letter.lower()
         last_letter = letter
     return new_string
+
+
+def lower_case_to_camel_case(string):
+    if string is None:
+        return None
+    new_string = [x.title() for x in string.split('_')]
+    return ''.join(new_string).replace('Id', 'ID')
+
+
+class QBRqRs3(object):
+
+    def __init__(self, sdk_object='', sdk_operation=''):
+        self.sdk_object = sdk_object
+        self.sdk_operation = sdk_operation
+        self.request = None
+        self.response = None
+
+    def get(self, **kwargs):
+        self._query('query', **kwargs)
+        if self.num_returned > 1:
+            raise MultipleItemsReturned('More than one Ret object returned')
+        elif self.num_returned == 0:
+            raise DoesNotExist('None exists for %s' % self.context)
+        return self._rets[0]
+
+    def all(self, **kwargs):
+        self._query('query', **kwargs)
+        return self
+
+    def add(self, from_object=None, **kwargs):
+        context = {
+            # 'sdk_operation': 'add',
+            'object': from_object
+        }
+        context.update(kwargs)
+        self._query('add', **context)
+
+        if self.num_returned > 1:
+            raise MultipleItemsReturned('More than one Ret object returned... what?')
+        elif self.num_returned == 0:
+            raise DoesNotExist('None exists for %s' % self.sdk_object)
+
+        return self
+
+    def _query(self, sdk_operation, **context):
+        if not self.request:
+            self.request = QBXMLWrapper(**context)
+        if not self.request.sdk_object:
+            self.request.sdk_object = self.sdk_object
+        self.request.sdk_operation = sdk_operation
+        self.request.sdk_transaction = 'rq'
+        # print self.request.to_string()
+        with qbc.session():
+            self.response_string = qbc.query(self.request.to_string())
+
+        # print self.response_string
+        self._response_soup = bs4.BeautifulSoup(self.response_string, "xml")  # Root == <QBXML>
+        self._rs = self._response_soup.QBXML.QBXMLMsgsRs.find_all(re.compile(r'(.*)Rs$'))
+        if len(self._rs) > 1:
+            raise NotImplementedError('More than one Rs object returned')
+        self._rs = self._rs[0]
+        self._status_check()
+        # start = datetime.now()
+        ret_tag = '%s%sRet' % (lower_case_to_camel_case(self.sdk_object),
+                               lower_case_to_camel_case(self.sdk_operation))
+        self._rets = [QBXML2(ret) for ret in self._rs.find_all(re.compile(ret_tag))]
+        # print self._rets
+        # end = datetime.now()
+        # print "took %s" % (end - start)
+        self.num_returned = len(self._rets)
+        if self.num_returned == 1:
+            self.__getattr__ = self._getattr
+
+    def _status_check(self):
+        self._status_code = self._rs['statusCode']
+        self._status_severity = self._rs['statusSeverity']
+        self._status_message = self._rs['statusMessage']
+        if self._status_severity == 'ERROR':
+            raise QBError(self._status_code, self._status_message)
+        elif self._status_code != '0':
+            print self._status_code, self._status_severity, self._status_message
+
+    def _getattr(self, item):
+        if self.num_returned == 1:
+            return getattr(self._rets[0], item)
+        raise
+
+class QBXMLWrapper(object):
+    """
+    Represents an arbitrary section of QBXML.
+
+    [Put here stuff about attribute renaming]
+    """
+    local_attrs = ['sdk_object', 'sdk_operation', 'root', 'fields', 'template', 'sdk_transaction', 'string', 'fields']
+
+    def __init__(self, sdk_object='', sdk_transaction=None, **context):
+        self.sdk_object = sdk_object
+        self.sdk_operation = None
+        self.root = None
+        self.template = None
+        self.sdk_transaction = sdk_transaction
+        self.string = None
+        self.fields = []
+        super(QBXMLWrapper, self).__setattr__('_fields_data', {})
+        for (k, v) in context.iteritems():
+            self._fields_data[k] = v
+        # if not root_tag and sdk_object:
+        #     root_tag = '_'.join([sdk_object, sdk_operation, sdk_transaction])
+        # if root_tag:
+        #     root_tag = lower_case_to_camel_case(root_tag)
+        #     root = self.soup.new_tag(root_tag)
+        #     self.soup.append(root)
+        #     self.root = self.soup.find(root_tag)
+        # print 'init called, root_tag is %s, root is %s' % (root, self.root)
+
+    def __getattr__(self, item):
+        # print 'getattr', self
+        try:
+            return self._fields_data[item]
+        except KeyError:
+            print 'error:', self._fields_data
+            raise
+
+    def __getitem__(self, item):
+        return self._fields_data[item]
+
+    def __setattr__(self, key, value):
+        if key in self.local_attrs:
+            super(QBXMLWrapper, self).__setattr__(key, value)
+        else:
+            self.fields.append(key)
+            self._fields_data[key] = value
+
+    def __setitem__(self, key, value):
+        """
+        While this does attempt some type inferencing, it is safer to be explicit with your calls. For example,
+         if you have an object that returns valid QBXML, you should pass in the QBXML as the value, not the object.
+
+
+        :param key:
+        :param value:
+        :return:
+        """
+        if not isinstance(key, (str, unicode)):
+            raise TypeError('Key must be one of str or unicode, not %s' % type(key))
+
+        if key[-3:] == 'ref':
+            # print key
+            # print key, 'is a ref'
+            new_obj = self.__class__(root_tag=key)
+            # Enforce that Refs contain a list_id or full_name
+            if isinstance(value, dict):
+                if 'list_id' in value:
+                    new_obj['list_id'] = value['list_id']
+                    new_obj['full_name'] = None
+                elif 'qb_id' in value:
+                    new_obj['list_id'] = value['qb_id']
+                    new_obj['full_name'] = None
+                elif 'qb_list_id' in value:
+                    new_obj['list_id'] = value['qb_list_id']
+                    new_obj['full_name'] = None
+                elif 'full_name' in value:
+                    new_obj['full_name'] = value['full_name']
+                    new_obj['list_id'] = None
+            else:
+                if hasattr(value, 'list_id'):
+                    new_obj['list_id'] = getattr(value, 'list_id')
+                    new_obj['full_name'] = None
+                elif hasattr(value, 'qb_id'):
+                    new_obj['list_id'] = getattr(value, 'qb_id')
+                    new_obj['full_name'] = None
+                elif hasattr(value, 'full_name'):
+                    new_obj['full_name'] = getattr(value, 'full_name')
+                    new_obj['list_id'] = None
+                else:
+                    raise Exception("%s references another object, but does not include anything by which "
+                                    "QuickBooks can identify it." % key)
+            self._fields_data[key] = new_obj
+            # print 'new_obj =', new_obj
+
+        elif value is None or value is True or value is False or isinstance(value, self.__class__):
+            # print key, 'simple value or QBXMLWrapper class'
+            self._fields_data[key] = value
+
+        elif isinstance(value, dict):
+            # print key, 'is a dict'
+            self._fields_data[key] = self.__class__.from_dict(value, root_tag=key)
+
+        elif hasattr(value, '__dict__'):
+            # print key, 'has a __dict__'
+            self._fields_data[key] = self.__class__.from_object(value, root_tag=key)
+
+        elif isinstance(value, (list, tuple)):
+            # print key, 'is a list'
+            if key[-5:] == 'items':
+                self._fields_data['%s_lines' % self.sdk_object] = []
+                key = '%s_line' % self.sdk_object
+                for val in value:
+                    print val
+                    new_obj = self.__class__.from_dict(val, root_tag=key)
+                    self._fields_data['%s_lines' % self.sdk_object].append(new_obj)
+                    # tag = self.soup.new_tag(lower_case_to_camel_case(key))
+                    # tag.append(new_obj.soup)
+                    # self.root.append(tag)
+
+        else:
+            # print key, 'coerce to string', str(value)
+            self._fields_data[key] = str(value)
+
+    def __delitem__(self, item):
+        del self._fields_data[item]
+
+    @classmethod
+    def from_object(cls, obj, **kwargs):
+        """
+        Attempts to smartly get attributes from an object to turn into QBXML.
+
+        :param obj:
+        :param root_tag:
+        :return: new QBXMLWrapper instance
+        """
+
+        new_obj = cls(**kwargs)
+        for (attr_name, attr_value) in vars(obj).iteritems():
+            if not isinstance(attr_name, callable) and not attr_name[0:1] == '_':
+                new_obj._fields_data[attr_name] = attr_value
+
+        return new_obj
+
+    @classmethod
+    def from_dict(cls, d, **kwargs):
+        """
+        Creates a QBXMLWrapper instance from a dictionary.
+
+        :param d:
+        :param root_tag:
+        :return:
+        """
+
+        new_obj = cls(**kwargs)
+        for (key, value) in d.iteritems():
+            new_obj[key] = value
+
+        return new_obj
+
+    @classmethod
+    def from_string(cls, some_string):
+        soup = bs4.BeautifulSoup(some_string, 'xml')
+
+        new_obj = cls()
+
+    def to_string(self):
+        # print self._fields_data
+        # print self.sdk_object, self.sdk_operation, self.sdk_transaction
+        if not self.sdk_operation:
+            raise Exception("No operation specified.")
+        try:
+            self.template = get_template('%s.xml' % ('_'.join([self.sdk_object, self.sdk_operation])))
+            c = Context(self._fields_data)
+            return self.template.render(c)
+        except KeyError:
+            # print self._fields_data
+            raise
+        except TemplateDoesNotExist as e:
+            # print '\n\n\n\n\n\n', e.args, e.message, e.__class__
+            # raise
+            root_tag = '%s%s%s' % (lower_case_to_camel_case(self.sdk_object),
+                                   lower_case_to_camel_case(self.sdk_operation),
+                                   lower_case_to_camel_case(self.sdk_transaction))
+            info = ''
+            for (k, v) in self._fields_data.iteritems():
+                if not isinstance(v, (str, unicode)):
+                    raise NotImplementedError
+                else:
+                    info += '<%s>%s</%s>' % (lower_case_to_camel_case(k),
+                                             lower_case_to_camel_case(v),
+                                             lower_case_to_camel_case(k))
+            string = '<%s>%s</%s>' % (root_tag, info, root_tag)
+            return string
+
+
+
+    def __contains__(self, item):
+        return item in self._fields_data
+
+    def __str__(self):
+        # if 'root_tag' in self.fields:
+        #     return self.fields['root_tag']
+        # print self.sdk_object, self.sdk_operation, self.sdk_transaction
+        # print self.__dict__
+        # return '_'.join([self.sdk_object, self.sdk_operation, self.sdk_transaction])
+        return str(self._fields_data)
+
+
+class SalesReceipt(QBRqRs3):
+
+    @classmethod
+    def from_receipt(cls, receipt):
+        if not isinstance(receipt, Receipt):
+            raise TypeError('%s expected a %s object but got %s instead.' %
+                            (__name__, Receipt, receipt.__class__))
+        sdk_object = 'sales_receipt'
+        person = get_persons(receipt.buyer)
+        if person is None:
+            person = make_the_customer(receipt.buyer)
+            receipt.buyer.qb_list_id = person.list_id
+            receipt.buyer.save()
+        a = int(datetime.now().strftime('%Y%j%H%M%S%f'))
+        random.seed(a)
+        b = a + random.randrange(0, 999)
+        receipt_macro = 'Receipt:%s' % b
+        d = {
+            'receipt_macro': receipt_macro,
+            'txn_date': receipt.date,
+            'ref_number': receipt.ref_num,
+            'customer_ref': receipt.buyer,
+            'payment_method_ref': receipt.paymeth,
+            'memo': receipt.total_memo,
+            'deposit_to_account_ref': receipt.split_account,
+            'line_items': [
+                {
+                    'line_macro': 'line:%s' % (int(datetime.now().strftime('%Y%j%H%M%S%f')) + random.randrange(0, 999)),
+                    'item_ref': line_item.item,
+                    'desc': line_item.item.name,
+                    'quantity': line_item.quantity,
+                    'rate': line_item.item.cost,
+                    'class_ref': line_item.item.budget_line,
+                    'amount': line_item.amount,
+                    'sales_tax_code_ref': line_item.tax_code,
+                }
+                for line_item in ReceiptLineItem.objects.filter(transaction=receipt)
+            ]
+        }
+        # print 'line items going in:', d['line_items']
+        new_obj = cls(sdk_object=sdk_object)
+        new_obj.request = QBXMLWrapper.from_dict(d, sdk_object='sales_receipt')
+        return new_obj
+
+
+def create_customer_from_person_object(person_object):
+    template = get_template("create_customer2.xml")
+    context_dictionary = {
+        'full_name': person_object.full_name,
+        }
+
+
+def make_sales_receipt(receipt):
+    # print receipt.qb_id
+    if receipt.qb_id:
+        # print 'ywah'
+        return
+    template = get_template('sales_receipt_add.xml')
+    with qbc.session():
+        try:
+            person = get_persons(receipt.buyer)
+        except DoesNotExist:
+            person = make_the_customer(receipt.buyer)
+        receipt.buyer.qb_list_id = person.list_id
+        receipt.buyer.qb_edit_sequence = person.edit_sequence
+        receipt.buyer.save()
+        context_dictionary = {
+            'person': receipt.buyer,
+            'receipt': receipt,
+            'date': receipt.date.strftime('%Y-%m-%d'),
+            'line_items': ReceiptLineItem.objects.filter(transaction=receipt),
+        }
+
+        query_string = template.render(Context(context_dictionary))
+        # print query_string
+        response_string = qbc.query(query_string)
+        # print response_string
+        response_soup = bs4.BeautifulSoup(response_string, 'xml')
+        rs = response_soup.find('SalesReceiptAddRs')
+        line_rets = response_soup.find_all('SalesReceiptLineRet')
+        if int(rs['statusCode']) == 0:
+            receipt.qb_id = rs.SalesReceiptRet.TxnID.text
+            receipt.qb_edit_sequence = rs.SalesReceiptRet.EditSequence.text
+            receipt.ref_num = rs.SalesReceiptRet.RefNumber.text
+            receipt.save()
+        else:
+            print "fack: %s" % rs['statusCode']
+            print query_string
+
+
+def make_sparxo_receipt(p_obj, date, total_memo ):
+    # print receipt.qb_id
+    template = get_template('sales_receipt_add_sparxo.xml')
+    with qbc.session():
+        try:
+            person = get_persons(p_obj)
+        except DoesNotExist:
+            person = make_the_customer(p_obj)
+        p_obj.qb_list_id = person.list_id
+        p_obj.qb_edit_sequence = person.edit_sequence
+        p_obj.save()
+        context_dictionary = {
+            'person': p_obj,
+            'paymeth': 'Sparxo',
+            'split_account': Account.objects.get(number=1201),
+            'total_memo': total_memo,
+            'date': date,
+        }
+
+        query_string = template.render(Context(context_dictionary))
+        # print query_string
+        response_string = qbc.query(query_string)
+        # print response_string
+        response_soup = bs4.BeautifulSoup(response_string, 'xml')
+        rs = response_soup.find('SalesReceiptAddRs')
+        line_rets = response_soup.find_all('SalesReceiptLineRet')
+        if int(rs['statusCode']) == 0:
+            pass
+            # receipt.qb_id = rs.SalesReceiptRet.TxnID.text
+            # receipt.qb_edit_sequence = rs.SalesReceiptRet.EditSequence.text
+            # receipt.ref_num = rs.SalesReceiptRet.RefNumber.text
+            # receipt.save()
+        else:
+            print "fack: %s" % rs['statusCode']
+            print query_string
+
+def itemer(item):
+    template = get_template('find_items.xml')
+    context_dictionary = {
+        'full_name': item.name,
+    }
+    query_string = template.render(Context(context_dictionary))
+    response_string = qbc.query(query_string)
+    print response_string
+
+
+def classer(whatever):
+    if whatever.qb_id:
+        return
+    template = get_template('class_query.xml')
+    context_dictionary = {
+        'full_name': whatever.qb_full_name(),
+    }
+    query_string = template.render(Context(context_dictionary))
+    response_string = qbc.query(query_string)
+    response_soup = bs4.BeautifulSoup(response_string, 'xml')
+    rs = response_soup.find('ClassQueryRs')
+
+    if int(rs['statusCode']) == 0:
+        whatever.qb_id = rs.ClassRet.ListID.text
+        whatever.save()
+    else:
+        print 'fack: %s - %s' % (rs['statusCode'], whatever.qb_full_name())
+    # print response_string
+
+
+def do_sparxo():
+    import csv
+    f = open('sparxo.csv', 'r')
+    spamreader = csv.DictReader(f)
+    for row in spamreader:
+        if float(row['Ticket Unit Price']) == 0.0:
+            continue
+        total_memo = 'Sold through Sparxo - %s:%s' % (row['Check Code'], row['Last 4 digits Credit Card #'])
+        if Receipt.objects.filter(total_memo=total_memo).count() > 0:
+            continue
+        first_name = row['FirstName'].encode('ascii', 'ignore')
+        last_name = row['LastName'].encode('ascii', 'ignore')
+        date = datetime.strptime(row['DatePurchased'], '%m/%d/%Y %I:%M:%S %p').strftime('%Y-%m-%d')
+        email = row['Email'].encode('ascii', 'ignore')
+        phone = row['Phone']
+        # if row['What is your major?'] == 'Engineering & Computer Science':
+        person, created = Person.objects.get_or_create(email=email)
+        if created:
+            person.first_name = first_name
+            person.last_name = last_name
+        if not person.phone:
+            person.phone = phone
+        person.save()
+        make_sparxo_receipt(person, date, total_memo)
+        # split_account = Account.objects.get(number=1201)
+        # receipt = Receipt(date=date, buyer=person, paymeth_id=3, split_account=split_account,
+        #                   total_memo=total_memo)
+        # receipt.save()
+        # item = Item.objects.get(name='Dusted-Sparxo')
+        # ac = Account.objects.get(number=4312)
+        # line_item = ReceiptLineItem(quantity=1, item=item, account=ac, division=Division.objects.get(name='ECA'),
+        #                             budget_line=BudgetLine.objects.get(name='Frosh'), )

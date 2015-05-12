@@ -1,0 +1,33 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls requisitions_actions admin_modify %}
+{% block submit_buttons_top %}{% submit_row %}{% actions_row %}{% endblock %}
+{% block submit_buttons_bottom %}{% submit_row %}{% actions_row %}{% endblock %}
+{% block after_related_objects %}
+    <table>
+    <thead>
+    <tr>
+        <th>Date</th>
+        <th>From</th>
+        <th>To</th>
+        <th>Action</th>
+        <th>Comment</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for logitem in original.approvallog_set.all %}
+    <tr>
+        <td>{{ logitem.timestamp }}</td>
+    <td>{{ logitem.person.full_name }}</td>
+    <td>{{ logitem.sent_to.full_name }}</td>
+    <td>{{ logitem.action }}</td>
+    <td>{{ logitem.comment }}</td>
+    </tr>
+    {% endfor %}
+
+    </tbody>
+    </table>
+    {% for log in approvallog_set.all %}
+
+
+    {% endfor %}
+{% endblock %}

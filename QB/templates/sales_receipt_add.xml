@@ -1,0 +1,39 @@
+{% load qbxml_tags %}
+<SalesReceiptAddRq>
+    <SalesReceiptAdd>
+        <CustomerRef>
+            <ListID>{{ person.qb_list_id}} </ListID>
+        </CustomerRef>
+        <TxnDate>{{ date }}</TxnDate>
+        <PaymentMethodRef>
+            <FullName>{{ receipt.paymeth.name }}</FullName>
+        </PaymentMethodRef>
+{#        {% qb_ref payment_method_ref %}#}
+        <Memo>{{ receipt.total_memo }}</Memo>
+{#        {% qb_ref deposit_to_account_ref %}#}
+        <IsTaxIncluded>true</IsTaxIncluded>
+        <DepositToAccountRef>
+            <ListID>{{ receipt.split_account.qb_id }}</ListID>
+        </DepositToAccountRef>
+        {% for line_item in line_items %}
+        <SalesReceiptLineAdd>
+{#            {% qb_ref sales_receipt_line.item_ref %}#}
+            <ItemRef>
+                <FullName>Holder</FullName>
+            </ItemRef>
+            <Quantity>{{ line_item.quantity }}</Quantity>
+            <Rate>{{ line_item.item.cost }}</Rate>
+            <ClassRef>
+                {% if line_item.item.budget_line.qb_id %}
+                <ListID>{{ line_item.item.budget_line.qb_id }}</ListID>
+                {% else %}
+                <FullName>Uncategorized</FullName>
+                {% endif %}
+            </ClassRef>
+            <SalesTaxCodeRef>
+                <ListID>80000004-1232494917</ListID>
+            </SalesTaxCodeRef>
+        </SalesReceiptLineAdd>
+        {% endfor %}
+    </SalesReceiptAdd>
+  </SalesReceiptAddRq>

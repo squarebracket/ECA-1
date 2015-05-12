@@ -5,6 +5,7 @@ import pythoncom
 from django.template import Template, Context
 from django.template.loader import get_template
 from contextlib import contextmanager
+from urllib2 import urlopen
 import inspect
 
 logger = logging.getLogger(__name__)
@@ -32,12 +33,12 @@ def open_connection():
 def session():
     global status
     try:
-        open_qbc()
-        begin_session()
+        # open_qbc()
+        # begin_session()
         yield
     finally:
-        end_session()
-        close()
+        # end_session()
+        # close()
         status = None
 
 
@@ -63,7 +64,7 @@ def open_qbc(application_name=default_application_name):
         return
 
     pythoncom.CoInitialize()
-    com_handler = win32com.client.Dispatch("QBXMLRP2.RequestProcessor")
+    com_handler = win32com.client.dynamic.Dispatch("QBXMLRP2.RequestProcessor")
     logger.debug('calling OpenConnection')
     com_handler.OpenConnection2('', application_name, 1)
     logger.debug('OpenConnection called')
@@ -82,8 +83,8 @@ def begin_session(qb_file=qb_file_setting):
     """
 
     global ticket, status
-    logger.debug('Calling BeginSession')
-    ticket = com_handler.BeginSession(qb_file, 0)
+    logger.debug('Calling BeginSession on %s' % qb_file)
+    ticket = com_handler.BeginSession(qb_file, 2)
     logger.debug('BeginSession called')
     status = 'Locked'
 
@@ -98,13 +99,13 @@ def query(qbxml_query):
 </QBXML>""" % qbxml_query
     logger.debug('Sending query to QuickBooks')
     try:
-        response = com_handler.ProcessRequest(ticket, qbxml_query)
+        # response = com_handler.ProcessRequest(ticket, qbxml_query)
+        response = urlopen('http://127.0.0.1:11000/', qbxml_query)
     except pythoncom.com_error as e:
-        print e.__dict__
         raise
 
     logger.debug('Response received from QuickBooks')
-    return response
+    return response.read()
 
 
 def end_session():
